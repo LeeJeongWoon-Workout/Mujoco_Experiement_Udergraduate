@@ -167,8 +167,6 @@ for i in range(6):
             episode_steps = 0
             done = False
             state = env.reset()
-            done=False
-            total_num=0
             print("Evaluating")
             while not done:
                 if args.start_steps>total_num:
@@ -179,7 +177,6 @@ for i in range(6):
                 next_state,reward,done,_=env.step(action)
                 state=next_state
                 episode_steps+=1
-                total_num+=1
                 episode_reward+=reward
 
 
@@ -187,9 +184,6 @@ for i in range(6):
             print("{}th_{}th iteration Episode: {},total numsteps: {},episode steps: {},reward: {}".format(i,iteration,i_episode, total_num,
                                                                                        episode_steps,
                                                                                        round(episode_reward, 2)))
-
-
-
 
 
 env.close()
