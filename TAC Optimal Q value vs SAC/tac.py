@@ -6,7 +6,7 @@ from utils import soft_update, hard_update
 from model import GaussianPolicy, QNetwork,Tsallis_GaussianPolicy
 import random
 
-class Mixed_TAC(object):
+class TAC(object):
     def __init__(self, q,num_inputs, action_space, args):
 
         self.gamma = args.gamma
