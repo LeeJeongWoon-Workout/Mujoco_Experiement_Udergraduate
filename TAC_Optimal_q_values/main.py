@@ -10,6 +10,7 @@ from mixed_replay_buffer_stochastic import mixed_replay_buffer_stochastic
 from vanilla_episodic_buffer import vanilla_episodic_buffer
 from tac import TAC
 from sac import SAC
+
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
 parser.add_argument('--env-name', default="HalfCheetah-v2",
                     help='Mujoco Gym environment (default: HalfCheetah-v2)')
@@ -45,6 +46,7 @@ parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: True)')
 parser.add_argument('--epoch',type=int,default=100000,metavar='G')
 parser.add_argument('--render',type=bool,default=False,metavar='G')
+parser.add_argument('--iteration',type=int,default=10,metavar='G')
 
 args = parser.parse_args()
 # Environment
@@ -73,20 +75,20 @@ mixed_memory5=vanilla_episodic_buffer(args.replay_size,args.seed,tau=0.0)
 mixed_memory6=vanilla_episodic_buffer(args.replay_size,args.seed,tau=0.0)
 memory_list=[mixed_memory1,mixed_memory2,mixed_memory3,mixed_memory4,mixed_memory5,mixed_memory6]
 
-num_list1=np.arange(10000)
-num_list2=np.arange(10000)
-num_list3=np.arange(10000)
-num_list4=np.arange(10000)
-num_list5=np.arange(10000)
-num_list6=np.arange(10000)
+num_list1=np.arange(args.epoch)
+num_list2=np.arange(args.epoch)
+num_list3=np.arange(args.epoch)
+num_list4=np.arange(args.epoch)
+num_list5=np.arange(args.epoch)
+num_list6=np.arange(args.epoch)
 num_list=[num_list1,num_list2,num_list3,num_list4,num_list5,num_list6]
 
-reward_list1=np.zeros(10000)
-reward_list2=np.zeros(10000)
-reward_list3=np.zeros(10000)
-reward_list4=np.zeros(10000)
-reward_list5=np.zeros(10000)
-reward_list6=np.zeros(10000)
+reward_list1=np.zeros(args.epoch)
+reward_list2=np.zeros(args.epoch)
+reward_list3=np.zeros(args.epoch)
+reward_list4=np.zeros(args.epoch)
+reward_list5=np.zeros(args.epoch)
+reward_list6=np.zeros(args.epoch)
 reward_list=[reward_list1,reward_list2,reward_list3,reward_list4,reward_list5,reward_list6]
 
 total_numsteps1=0
@@ -115,7 +117,7 @@ for i in range(6):
     R_MAX_i=R_MAX_list.pop(0)
     total_num_i=total_numstep_list.pop(0)
     #i : index of algorithm
-    for iteration in range(10):
+    for iteration in range(args.iteration):
         # iteration : experiment
         agent = agent_i
         memory=memory_i
@@ -172,7 +174,7 @@ for i in range(6):
 env.close()
 
 for i in range(6):
-    reward_list[i]/=10
+    reward_list[i]/=args.iteration
 
 plt.figure(figsize=(30,10))
 for i in range(6):
@@ -184,5 +186,3 @@ plt.xlabel('Episode')
 plt.ylabel('Accumulated Return')
 plt.savefig('{}_Best_q_Values.jpg'.format(args.env_name))
 plt.show()
-
-
