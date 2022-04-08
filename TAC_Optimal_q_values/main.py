@@ -147,8 +147,7 @@ for i in range(6):
                         updates+=1
 
                 next_state, reward, done, _ = env.step(action)
-                episode_steps += 1
-                episode_reward += reward
+
 
                 mask = 1 if episode_steps == env._max_episode_steps else float(not done)
 
@@ -156,11 +155,32 @@ for i in range(6):
                 transition_list.append([state, action, reward, next_state, mask])
                 total_num+=1
                 state=next_state
+                episode_steps += 1
+                episode_reward += reward
 
             if episode_reward>R_MAX:
                 R_MAX=episode_reward
                 for t in transition_list:
                     memory.hpush(*t)
+
+            episode_reward = 0
+            episode_steps = 0
+            done = False
+            state = env.reset()
+            done=False
+            print("Evaluating")
+            while not done:
+                if args.start_steps>total_num:
+                    action=env.action_space.sample()
+                else:
+                    action=agent.select_action(state,evaluate=True)
+
+                next_state,reward,done,_=env.step(action)
+                state=next_state
+                episode_steps+=1
+                total_num+=1
+                episode_reward+=reward
+
 
             reward_list[i][i_episode] += round(episode_reward, 2)
             print("{}th_{}th iteration Episode: {},total numsteps: {},episode steps: {},reward: {}".format(i,iteration,i_episode, total_num,
@@ -177,6 +197,7 @@ for i in range(6):
     reward_list[i]/=args.iteration
 
 plt.figure(figsize=(30,10))
+plt.title('{}'.format(args.env_name))
 for i in range(6):
     plt.plot(num_list[i],reward_list[i])
 
@@ -186,3 +207,5 @@ plt.xlabel('Episode')
 plt.ylabel('Accumulated Return')
 plt.savefig('{}_Best_q_Values.jpg'.format(args.env_name))
 plt.show()
+
+
