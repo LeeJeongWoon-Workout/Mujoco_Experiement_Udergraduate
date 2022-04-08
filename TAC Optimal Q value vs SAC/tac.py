@@ -11,7 +11,6 @@ class TAC(object):
 
         self.gamma = args.gamma
         self.tau = args.tau
-        self.alpha = args.alpha
         self.q=q
         self.policy_type = args.policy
         self.target_update_interval = args.target_update_interval
@@ -26,11 +25,10 @@ class TAC(object):
         hard_update(self.critic_target, self.critic)
 
 
-        if self.policy_type == "Gaussian":
-            # Target Entropy = −dim(A) (e.g. , -6 for HalfCheetah-v2) as given in the paper
-            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
-            self.policy=Tsallis_GaussianPolicy(num_inputs,action_space.shape[0],args.hidden_size,action_space,q=self.q).to(self.device)
-            self.policy_optim=Adam(self.policy.parameters(),lr=args.lr)
+        self.alpha=0
+        self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+        self.policy=Tsallis_GaussianPolicy(num_inputs,action_space.shape[0],args.hidden_size,action_space,q=self.q).to(self.device)
+        self.policy_optim=Adam(self.policy.parameters(),lr=args.lr)
 
 
 
@@ -77,15 +75,17 @@ class TAC(object):
         policy_loss.backward()
         self.policy_optim.step()
 
+        alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
 
-        alpha_loss = torch.tensor(0.).to(self.device)
-        alpha_tlogs = torch.tensor(self.alpha) # For TensorboardX logs
+        self.alpha_optim.zero_grad()
+        alpha_loss.backward()
+        self.alpha_optim.step()
 
 
         if updates % self.target_update_interval == 0:
             soft_update(self.critic_target, self.critic, self.tau)
 
-        return qf1_loss.item(), qf2_loss.item(), policy_loss.item(), alpha_loss.item(), alpha_tlogs.item()
+
 
     # Save model parameters
     def save_checkpoint(self, env_name, suffix="", ckpt_path=None):
