@@ -168,6 +168,7 @@ for i in range(6):
             done = False
             state = env.reset()
             done=False
+            total_num=0
             print("Evaluating")
             while not done:
                 if args.start_steps>total_num:
