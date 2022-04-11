@@ -10,6 +10,9 @@ from mixed_replay_buffer_stochastic import mixed_replay_buffer_stochastic
 from vanilla_episodic_buffer import vanilla_episodic_buffer
 from tac import TAC
 from sac import SAC
+from torch.utils.tensorboard import SummaryWriter
+import pandas as pd
+import seaborn as sns
 
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
 parser.add_argument('--env-name', default="HalfCheetah-v2",
@@ -48,6 +51,8 @@ parser.add_argument('--epoch',type=int,default=100000,metavar='G')
 parser.add_argument('--render',type=bool,default=False,metavar='G')
 parser.add_argument('--iteration',type=int,default=10,metavar='G')
 
+
+
 args = parser.parse_args()
 # Environment
 # env = NormalizedActions(gym.make(args.env_name))
@@ -58,6 +63,11 @@ result_list=list()
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
+test_env=list()
+for i in range(args.iteration):
+    test=gym.make(args.env_name)
+    test.seed(args.seed+i)
+    test_env.append(test)
 
 agent1=TAC(env.observation_space.shape[0], env.action_space, args=args, q=1.1)
 agent2=TAC(env.observation_space.shape[0], env.action_space, args=args, q=1.2)
@@ -75,20 +85,21 @@ mixed_memory5=vanilla_episodic_buffer(args.replay_size,args.seed,tau=0.0)
 mixed_memory6=vanilla_episodic_buffer(args.replay_size,args.seed,tau=0.0)
 memory_list=[mixed_memory1,mixed_memory2,mixed_memory3,mixed_memory4,mixed_memory5,mixed_memory6]
 
-num_list1=np.arange(args.epoch)
-num_list2=np.arange(args.epoch)
-num_list3=np.arange(args.epoch)
-num_list4=np.arange(args.epoch)
-num_list5=np.arange(args.epoch)
-num_list6=np.arange(args.epoch)
+
+num_list1=list()
+num_list2=list()
+num_list3=list()
+num_list4=list()
+num_list5=list()
+num_list6=list()
 num_list=[num_list1,num_list2,num_list3,num_list4,num_list5,num_list6]
 
-reward_list1=np.zeros(args.epoch)
-reward_list2=np.zeros(args.epoch)
-reward_list3=np.zeros(args.epoch)
-reward_list4=np.zeros(args.epoch)
-reward_list5=np.zeros(args.epoch)
-reward_list6=np.zeros(args.epoch)
+reward_list1=list()
+reward_list2=list()
+reward_list3=list()
+reward_list4=list()
+reward_list5=list()
+reward_list6=list()
 reward_list=[reward_list1,reward_list2,reward_list3,reward_list4,reward_list5,reward_list6]
 
 total_numsteps1=0
@@ -110,20 +121,19 @@ R_MAX6=-1000000000000000000000000000
 
 R_MAX_list=[R_MAX1,R_MAX2,R_MAX3,R_MAX4,R_MAX5,R_MAX6]
 
-
-for i in range(6):
+for i in range(6): # 알고리
     agent_i=agent_list.pop(0)
     memory_i=memory_list.pop(0)
     R_MAX_i=R_MAX_list.pop(0)
     total_num_i=total_numstep_list.pop(0)
     #i : index of algorithm
-    for iteration in range(args.iteration):
+    for iteration in range(1): # 훈련 반복
         # iteration : experiment
         agent = agent_i
         memory=memory_i
         R_MAX=R_MAX_i
         total_num=total_num_i
-        for i_episode in range(args.epoch):
+        for i_episode in itertools.count(1):
             #i_episode: episode each experiment
             episode_reward = 0
             episode_steps = 0
@@ -162,45 +172,47 @@ for i in range(6):
                 R_MAX=episode_reward
                 for t in transition_list:
                     memory.hpush(*t)
+            if total_num>args.num_steps:
+                break
+            if i_episode%10==0:
+                for iter in range(args.iteration):# test 반복
 
-            episode_reward = 0
-            episode_steps = 0
-            done = False
-            state = env.reset()
-            print("Evaluating")
-            while not done:
-                if args.start_steps>total_num:
-                    action=env.action_space.sample()
-                else:
-                    action=agent.select_action(state,evaluate=True)
+                    episode_reward = 0
+                    episode_steps = 0
+                    done=False
+                    state=test_env[iter].reset()
+                    print("total_num_step: {} , algorithm: {}  Evaluating: {}".format(total_num,i,iter))
+                    while not done:
+                        action=agent.select_action(state,evaluate=True)
+                        next_state,reward,done,_=test_env[iter].step(action)
+                        state=next_state
+                        episode_steps+=1
+                        episode_reward+=reward
 
-                next_state,reward,done,_=env.step(action)
-                state=next_state
-                episode_steps+=1
-                episode_reward+=reward
+                    reward_list[i].append(episode_reward)
+                    num_list[i].append(total_num)
 
-
-            reward_list[i][i_episode] += round(episode_reward, 2)
-            print("{}th_{}th iteration Episode: {},total numsteps: {},episode steps: {},reward: {}".format(i,iteration,i_episode, total_num,
-                                                                                       episode_steps,
-                                                                                       round(episode_reward, 2)))
-
-
-env.close()
+#for csv
+name_list=["TAC q=1.1","TAC q=1.2","TAC q=1.3","TAC q=1.4","TAC q=1.5","SAC"]
+csv_algo_list=list()
+csv_inter_list=list()
+csv_reward_list=list()
 
 for i in range(6):
-    reward_list[i]/=args.iteration
+    name=[name_list[i] for n in range(len(num_list[i]))]
+    csv_algo_list.extend(name)
+    csv_inter_list.extend(num_list[i])
+    csv_reward_list.extend(reward_list[i])
 
+
+
+my_df=pd.DataFrame({"Model":csv_algo_list,"Interaction":csv_inter_list,"Accumulated Reward":csv_reward_list})
 plt.figure(figsize=(30,10))
-plt.title('{}'.format(args.env_name))
-for i in range(6):
-    plt.plot(num_list[i],reward_list[i])
-
-plt.rc('legend',fontsize=30)
-plt.legend(['q=1.1','q=1.2','q=1.3','q=1.4','q=1.5','SAC'])
-plt.xlabel('Episode')
-plt.ylabel('Accumulated Return')
-plt.savefig('{}_Best_q_Values.jpg'.format(args.env_name))
+plt.title(args.env_name)
+sns.lineplot(x="Interaction",y="Accumulated Reward",hue="Model",data=my_df)
+plt.savefig('{}.png'.format(args.env_name))
 plt.show()
+
+
 
 
