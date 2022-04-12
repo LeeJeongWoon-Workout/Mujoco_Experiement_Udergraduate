@@ -1,1 +1,7 @@
+D2RL
+SAC
+TAC q=1.2 1.4 1.5
 
+Vanilla
+SAC
+TAC q=1.5 
